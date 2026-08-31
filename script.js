@@ -362,6 +362,16 @@ document.querySelector('[data-action="delete-nx-folder"]').addEventListener("cli
     }
 });
 
+// Clean GPU
+const cleanGpuBtn = document.querySelector('[data-action="clean-gpu"]');
+if (cleanGpuBtn) {
+    cleanGpuBtn.addEventListener("click", () => {
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage("clean-gpu");
+        }
+    });
+}
+
 // Gameloop Boost
 const boostBtn = document.querySelector('[data-action="gameloop-boost"]');
 if (boostBtn) {
