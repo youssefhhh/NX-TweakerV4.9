@@ -382,6 +382,16 @@ if (boostBtn) {
     });
 }
 
+// Fix Open GL
+const fixOpenGlBtn = document.querySelector('[data-action="fix-opengl"]');
+if (fixOpenGlBtn) {
+    fixOpenGlBtn.addEventListener("click", () => {
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage("fix-opengl");
+        }
+    });
+}
+
 // Kill Emulator
 document.querySelector('[data-action="kill-emulator"]').addEventListener("click", () => {
     if (window.chrome && window.chrome.webview) {
