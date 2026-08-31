@@ -362,6 +362,16 @@ document.querySelector('[data-action="delete-nx-folder"]').addEventListener("cli
     }
 });
 
+// Gameloop Boost
+const boostBtn = document.querySelector('[data-action="gameloop-boost"]');
+if (boostBtn) {
+    boostBtn.addEventListener("click", () => {
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage("gameloop-boost");
+        }
+    });
+}
+
 // Kill Emulator
 document.querySelector('[data-action="kill-emulator"]').addEventListener("click", () => {
     if (window.chrome && window.chrome.webview) {
