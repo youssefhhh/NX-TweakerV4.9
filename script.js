@@ -376,6 +376,9 @@ if (cleanGpuBtn) {
 const boostBtn = document.querySelector('[data-action="gameloop-boost"]');
 if (boostBtn) {
     boostBtn.addEventListener("click", () => {
+        if (window.updateBoostModal) {
+            window.updateBoostModal(0, "Initializing GameLoop Boost...", "Connecting to ADB engine & preparing parameters...", "Step 0/9", "loading", "GAMELOOP ULTRA BOOST", "fas fa-rocket");
+        }
         if (window.chrome && window.chrome.webview) {
             window.chrome.webview.postMessage("gameloop-boost");
         }
@@ -386,8 +389,24 @@ if (boostBtn) {
 const fixOpenGlBtn = document.querySelector('[data-action="fix-opengl"]');
 if (fixOpenGlBtn) {
     fixOpenGlBtn.addEventListener("click", () => {
+        if (window.updateBoostModal) {
+            window.updateBoostModal(0, "Initializing Local OpenGL Fix...", "Detecting GameLoop paths & creating backups...", "Step 0/9", "loading", "GAMELOOP FIX OPEN GL", "fas fa-cube");
+        }
         if (window.chrome && window.chrome.webview) {
             window.chrome.webview.postMessage("fix-opengl");
+        }
+    });
+}
+
+// Fix VT (Restore GameLoop)
+const fixVtBtn = document.querySelector('[data-action="fix-vt"]');
+if (fixVtBtn) {
+    fixVtBtn.addEventListener("click", () => {
+        if (window.updateBoostModal) {
+            window.updateBoostModal(0, "Initializing Fix VT / Restore...", "Stopping processes & preparing to restore defaults...", "Step 0/6", "loading", "GAMELOOP FIX VT", "fas fa-undo-alt");
+        }
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage("fix-vt");
         }
     });
 }

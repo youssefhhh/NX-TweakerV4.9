@@ -126,8 +126,8 @@
         <div class="boost-modal" id="boostModal">
             <div class="boost-modal-header">
                 <div class="boost-title-wrap">
-                    <i class="fas fa-rocket boost-header-icon"></i>
-                    <span class="boost-modal-title" data-i18n="boost-modal-title">GAMELOOP ULTRA BOOST</span>
+                    <i class="fas fa-rocket boost-header-icon" id="boostHeaderIcon"></i>
+                    <span class="boost-modal-title" id="boostModalTitle" data-i18n="boost-modal-title">GAMELOOP ULTRA BOOST</span>
                 </div>
                 <button class="boost-modal-close" id="boostCloseBtn" title="Close"><i class="fas fa-times"></i></button>
             </div>
@@ -633,6 +633,12 @@
                             <div class="gameloop-btn-glow"></div>
                             <i class="fas fa-cube"></i>
                             <span class="gameloop-btn-text" data-i18n="btn-fix-opengl">Fix Open GL</span>
+                            <div class="gameloop-btn-ripple"></div>
+                        </button>
+                        <button class="gameloop-btn" data-action="fix-vt" id="btnFixVT">
+                            <div class="gameloop-btn-glow"></div>
+                            <i class="fas fa-undo-alt"></i>
+                            <span class="gameloop-btn-text" data-i18n="btn-fix-vt">Fix VT</span>
                             <div class="gameloop-btn-ripple"></div>
                         </button>
                         <button class="gameloop-btn" data-action="start-gameloop">
@@ -1224,7 +1230,8 @@
             'section-tweaks-fix': 'تعديلات وإصلاحات',
             'btn-remove-all': 'إزالة الكل',
             'btn-screen-fix': 'إصلاح الشاشة',
-            'btn-fix-opengl': 'إصلاح Open GL'
+            'btn-fix-opengl': 'إصلاح Open GL',
+            'btn-fix-vt': 'إصلاح VT (استعادة الإعدادات)'
         };
 
         var originals = {};
@@ -1258,8 +1265,8 @@
 
         if (currentLang === 'ar') setLanguage('ar');
 
-        // GameLoop Boost Modal Controller
-        window.updateBoostModal = function(percent, title, desc, stepStr, status) {
+        // GameLoop Action / Boost Modal Controller
+        window.updateBoostModal = function(percent, title, desc, stepStr, status, headerTitle, headerIcon) {
             const overlay = document.getElementById("boostOverlay");
             const modal = document.getElementById("boostModal");
             const percentEl = document.getElementById("boostPercentNumber");
@@ -1269,6 +1276,8 @@
             const stepEl = document.getElementById("boostStepCounter");
             const iconCircle = document.getElementById("boostIconCircle");
             const visualIcon = document.getElementById("boostVisualIcon");
+            const headerTitleEl = document.getElementById("boostModalTitle");
+            const headerIconEl = document.getElementById("boostHeaderIcon");
             const footer = document.getElementById("boostFooter");
             const closeBtn = document.getElementById("boostCloseBtn");
 
@@ -1276,6 +1285,9 @@
 
             overlay.classList.add("active");
             modal.classList.add("active");
+
+            if (headerTitle && headerTitleEl) headerTitleEl.textContent = headerTitle;
+            if (headerIcon && headerIconEl) headerIconEl.className = headerIcon + " boost-header-icon";
 
             if (percentEl) percentEl.textContent = Math.min(100, Math.max(0, percent));
             if (barEl) barEl.style.width = Math.min(100, Math.max(0, percent)) + "%";
@@ -1297,7 +1309,10 @@
                 if (closeBtn) closeBtn.style.display = "flex";
             } else {
                 modal.classList.remove("success", "error");
-                if (visualIcon) visualIcon.className = "fas fa-rocket";
+                if (visualIcon) {
+                    if (headerIcon) visualIcon.className = headerIcon;
+                    else visualIcon.className = "fas fa-rocket";
+                }
                 if (footer) footer.style.display = "none";
                 if (closeBtn) closeBtn.style.display = "none";
             }
