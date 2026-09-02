@@ -348,10 +348,71 @@ document.querySelector('[data-action="clear-temp"]').addEventListener("click", (
     }
 });
 
-// Delete GameLoop
-document.querySelector('[data-action="delete-gameloop"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("delete-gameloop");
+// Delete GameLoop with Confirmation
+const deleteGameloopBtn = document.querySelector('[data-action="delete-gameloop"]');
+const deleteGameloopOverlay = document.getElementById("deleteGameloopOverlay");
+const deleteGameloopModal = document.getElementById("deleteGameloopModal");
+const deleteGameloopYesBtn = document.getElementById("deleteGameloopYesBtn");
+const deleteGameloopNoBtn = document.getElementById("deleteGameloopNoBtn");
+const deleteGameloopCloseBtn = document.getElementById("deleteGameloopCloseBtn");
+
+function showDeleteGameloopConfirm() {
+    if (deleteGameloopOverlay && deleteGameloopModal) {
+        deleteGameloopOverlay.classList.add("active");
+        deleteGameloopModal.classList.add("active");
+    } else {
+        // Fallback
+        if (confirm("Are You Sure To Delete Gameloop Completely")) {
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage("delete-gameloop");
+            }
+        }
+    }
+}
+
+function hideDeleteGameloopConfirm() {
+    if (deleteGameloopOverlay && deleteGameloopModal) {
+        deleteGameloopOverlay.classList.remove("active");
+        deleteGameloopModal.classList.remove("active");
+    }
+}
+
+if (deleteGameloopBtn) {
+    deleteGameloopBtn.addEventListener("click", () => {
+        showDeleteGameloopConfirm();
+    });
+}
+
+if (deleteGameloopYesBtn) {
+    deleteGameloopYesBtn.addEventListener("click", () => {
+        hideDeleteGameloopConfirm();
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage("delete-gameloop");
+        }
+    });
+}
+
+if (deleteGameloopNoBtn) {
+    deleteGameloopNoBtn.addEventListener("click", () => {
+        hideDeleteGameloopConfirm();
+    });
+}
+
+if (deleteGameloopCloseBtn) {
+    deleteGameloopCloseBtn.addEventListener("click", () => {
+        hideDeleteGameloopConfirm();
+    });
+}
+
+if (deleteGameloopOverlay) {
+    deleteGameloopOverlay.addEventListener("click", () => {
+        hideDeleteGameloopConfirm();
+    });
+}
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && deleteGameloopModal && deleteGameloopModal.classList.contains("active")) {
+        hideDeleteGameloopConfirm();
     }
 });
 
