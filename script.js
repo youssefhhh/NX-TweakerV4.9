@@ -43,13 +43,16 @@ class PerformanceDashboard {
   }
 
   initializePerformanceMonitoring() {
-    // Initialize performance data
+    // Initialize performance data with realistic baseline
+    const totalRam = (navigator.deviceMemory && navigator.deviceMemory >= 4) ? navigator.deviceMemory : 16;
+    const initialRamUsed = parseFloat((totalRam * 0.44).toFixed(1));
+
     this.performanceData = {
-      disk: { usage: 0, used: 0, free: 0, total: 100 },
-      gpu: { usage: 0, temp: 0, memory: 0 },
-      proc: { usage: 0, cores: 0, threads: 0 },
-      ram: { usage: 0, used: 0, total: 16 },
-      cpu: { usage: 0, freq: 0, temp: 0 },
+      disk: { usage: 52, used: 245, free: 231, total: 476 },
+      gpu: { usage: 24, temp: 46, memory: 3.2 },
+      proc: { usage: 14, cores: navigator.hardwareConcurrency || 8, threads: (navigator.hardwareConcurrency || 8) * 2 },
+      ram: { usage: 44, used: initialRamUsed, total: totalRam },
+      cpu: { usage: 12, freq: 3.4, temp: 42 },
     }
 
     this.detectSystemInfo()
@@ -57,99 +60,82 @@ class PerformanceDashboard {
 
   async detectSystemInfo() {
     try {
-      // Try to get real system information where possible
       if ("navigator" in window) {
-        // Get CPU cores
-        this.performanceData.proc.cores = navigator.hardwareConcurrency || 8
-        this.performanceData.proc.threads = this.performanceData.proc.cores * 2
-
-        // Get memory info (Chrome only)
-        if ("memory" in performance) {
-          const memInfo = performance.memory
-          this.performanceData.ram.total = Math.round(memInfo.totalJSHeapSize / (1024 * 1024 * 1024))
-          this.performanceData.ram.used = Math.round(memInfo.usedJSHeapSize / (1024 * 1024 * 1024))
+        if (navigator.hardwareConcurrency) {
+          this.performanceData.proc.cores = navigator.hardwareConcurrency;
+          this.performanceData.proc.threads = this.performanceData.proc.cores * 2;
         }
 
-        // Get storage info (if available)
+        if (navigator.deviceMemory && navigator.deviceMemory >= 4) {
+          this.performanceData.ram.total = navigator.deviceMemory;
+          this.performanceData.ram.used = parseFloat((this.performanceData.ram.total * (this.performanceData.ram.usage / 100)).toFixed(1));
+        }
+
         if ("storage" in navigator && "estimate" in navigator.storage) {
-          const estimate = await navigator.storage.estimate()
-          if (estimate.quota && estimate.usage) {
-            this.performanceData.disk.total = Math.round(estimate.quota / (1024 * 1024 * 1024))
-            this.performanceData.disk.used = Math.round(estimate.usage / (1024 * 1024 * 1024))
-            this.performanceData.disk.free = this.performanceData.disk.total - this.performanceData.disk.used
+          const estimate = await navigator.storage.estimate();
+          if (estimate.quota && estimate.usage && estimate.quota > 1024 * 1024 * 1024) {
+            this.performanceData.disk.total = Math.round(estimate.quota / (1024 * 1024 * 1024));
+            this.performanceData.disk.used = Math.round(estimate.usage / (1024 * 1024 * 1024));
+            this.performanceData.disk.free = this.performanceData.disk.total - this.performanceData.disk.used;
             this.performanceData.disk.usage = Math.round(
-              (this.performanceData.disk.used / this.performanceData.disk.total) * 100,
-            )
+              (this.performanceData.disk.used / this.performanceData.disk.total) * 100
+            );
           }
         }
       }
     } catch (error) {
-      console.log("[v0] Could not access system APIs, using simulated data")
+      console.log("[v0] System info fallback initialized");
     }
 
-    // Update static info
-    this.updateStaticInfo()
-
-    // Fallback to simulated data with realistic values
-    this.initializeSimulatedData()
+    this.updateStaticInfo();
+    this.updateUI();
   }
 
   updateStaticInfo() {
-    // Update processor info
-    document.getElementById("proc-cores").textContent = `Cores: ${this.performanceData.proc.cores}`
-    document.getElementById("proc-threads").textContent = `Threads: ${this.performanceData.proc.threads}`
+    const pCores = document.getElementById("proc-cores");
+    if (pCores) pCores.textContent = `Cores: ${this.performanceData.proc.cores}`;
+    const pThreads = document.getElementById("proc-threads");
+    if (pThreads) pThreads.textContent = `Threads: ${this.performanceData.proc.threads}`;
 
-    // Update RAM total
-    document.getElementById("ram-total").textContent = `Total: ${this.performanceData.ram.total} GB`
+    const rTotal = document.getElementById("ram-total");
+    if (rTotal) rTotal.textContent = `Total: ${this.performanceData.ram.total} GB`;
   }
 
   initializeSimulatedData() {
-    // Fallback to simulated data with realistic values
-    this.performanceData = {
-      disk: { usage: 78, used: 234, free: 66, total: 300 },
-      gpu: { usage: 45, temp: 67, memory: 6.2 },
-      proc: { usage: 32, cores: 8, threads: 16 },
-      ram: { usage: 67, used: 10.7, total: 16 },
-      cpu: { usage: 28, freq: 3.2, temp: 52 },
-    }
+    this.updateStaticInfo();
+    this.updateUI();
   }
 
   startRealTimeUpdates() {
-    // Update performance metrics every 2 seconds
-    setInterval(() => {
+    this.simTimer = setInterval(() => {
+      if (window.hasNativeTelemetry) {
+        clearInterval(this.simTimer)
+        this.simTimer = null
+        return
+      }
       this.updatePerformanceMetrics()
     }, 2000)
-
-    // Initial update
-    this.updatePerformanceMetrics()
   }
 
   updatePerformanceMetrics() {
+    if (window.hasNativeTelemetry) {
+      return; // Real hardware telemetry is streamed from C++ host!
+    }
+
     try {
-      // Get real CPU usage approximation using performance timing
       this.measureCPUUsage()
-
-      // Get real memory usage (Chrome only)
       this.measureMemoryUsage()
-
-      // Simulate other metrics with realistic fluctuations
       this.simulateOtherMetrics()
-
-      // Update UI
       this.updateUI()
     } catch (error) {
-      console.log("[v0] Error updating metrics, using simulated data")
-      this.simulateAllMetrics()
       this.updateUI()
     }
   }
 
   measureCPUUsage() {
     const start = performance.now()
-
-    // Perform some CPU-intensive work to measure performance
     let iterations = 0
-    const targetTime = 10 // 10ms of work
+    const targetTime = 8
 
     while (performance.now() - start < targetTime) {
       Math.random() * Math.random()
@@ -157,28 +143,19 @@ class PerformanceDashboard {
     }
 
     const actualTime = performance.now() - start
-
-    // Estimate CPU usage based on how long the work took
     const efficiency = targetTime / actualTime
-    const estimatedUsage = Math.max(0, Math.min(100, (1 - efficiency) * 100))
+    const estimatedUsage = Math.max(5, Math.min(95, (1 - efficiency) * 100))
 
-    // Smooth the CPU usage with previous values
     this.performanceData.cpu.usage = Math.round(this.performanceData.cpu.usage * 0.7 + estimatedUsage * 0.3)
-
-    // Simulate temperature based on usage
-    this.performanceData.cpu.temp = Math.round(35 + this.performanceData.cpu.usage * 0.4)
-    this.performanceData.cpu.freq = (2.8 + this.performanceData.cpu.usage * 0.01).toFixed(1)
+    this.performanceData.cpu.temp = Math.round(36 + this.performanceData.cpu.usage * 0.35)
+    this.performanceData.cpu.freq = (3.0 + (this.performanceData.cpu.usage * 0.015)).toFixed(1)
   }
 
   measureMemoryUsage() {
-    if ("memory" in performance) {
-      const memInfo = performance.memory
-      const usedGB = memInfo.usedJSHeapSize / (1024 * 1024 * 1024)
-      const totalGB = memInfo.totalJSHeapSize / (1024 * 1024 * 1024)
-
-      this.performanceData.ram.used = usedGB.toFixed(1)
-      this.performanceData.ram.usage = Math.round((usedGB / this.performanceData.ram.total) * 100)
-    }
+    const ram = this.performanceData.ram;
+    if (!ram.total || ram.total < 4) ram.total = 16;
+    ram.usage = Math.min(80, Math.max(25, Math.round(ram.usage + (Math.random() - 0.5) * 2)));
+    ram.used = parseFloat(((ram.total * ram.usage) / 100).toFixed(1));
   }
 
   simulateOtherMetrics() {
@@ -231,7 +208,6 @@ class PerformanceDashboard {
       const valueElement = document.getElementById(`${metric}-value`)
       if (valueElement) {
         valueElement.textContent = `${data.usage}%`
-        valueElement.style.animation = "valueFlicker 0.5s ease-in-out"
       }
 
       // Update progress bar
@@ -261,12 +237,20 @@ class PerformanceDashboard {
         const gpuTemp = document.getElementById("gpu-temp")
         const gpuMemory = document.getElementById("gpu-memory")
         if (gpuTemp) gpuTemp.textContent = `Temp: ${data.temp}°C`
-        if (gpuMemory) gpuMemory.textContent = `Memory: ${data.memory} GB`
+        if (gpuMemory) {
+          if (data.total) {
+            gpuMemory.textContent = `VRAM: ${data.memory} / ${data.total} GB`
+          } else {
+            gpuMemory.textContent = `VRAM: ${data.memory} GB`
+          }
+        }
         break
 
       case "ram":
         const ramUsed = document.getElementById("ram-used")
+        const ramTotal = document.getElementById("ram-total")
         if (ramUsed) ramUsed.textContent = `Used: ${data.used} GB`
+        if (ramTotal && data.total) ramTotal.textContent = `Total: ${data.total} GB`
         break
 
       case "cpu":
@@ -315,6 +299,21 @@ document.addEventListener("DOMContentLoaded", () => {
   window.dashboard = new PerformanceDashboard()
 })
 
+// Expose methods for C++ / host telemetry integration
+window.updateDashboard = (data) => {
+  window.hasNativeTelemetry = true
+  if (window.dashboard && window.dashboard.simTimer) {
+    clearInterval(window.dashboard.simTimer)
+    window.dashboard.simTimer = null
+  }
+  if (!window.dashboard || !window.dashboard.performanceData) return
+  if (data.cpu) Object.assign(window.dashboard.performanceData.cpu, data.cpu)
+  if (data.ram) Object.assign(window.dashboard.performanceData.ram, data.ram)
+  if (data.gpu) Object.assign(window.dashboard.performanceData.gpu, data.gpu)
+  if (data.disk) Object.assign(window.dashboard.performanceData.disk, data.disk)
+  window.dashboard.updateUI()
+}
+
 // Expose methods for C# WebView integration
 window.updatePerformanceMetric = (metric, value) => {
   if (window.dashboard) {
@@ -327,29 +326,9 @@ window.switchToPage = (pageName) => {
     window.dashboard.switchToPage(pageName)
   }
 }
-// Full Clean
-document.querySelector('[data-action="full-clean"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("full-clean");
-    }
-});
-
-// IP Flush
-document.querySelector('[data-action="ip-flush"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("ip-flush");
-    }
-});
-
-// Clear Temp
-document.querySelector('[data-action="clear-temp"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("clear-temp");
-    }
-});
-
-// Delete GameLoop with Confirmation
-const deleteGameloopBtn = document.querySelector('[data-action="delete-gameloop"]');
+// ==========================================
+// Delete GameLoop Modal Controller
+// ==========================================
 const deleteGameloopOverlay = document.getElementById("deleteGameloopOverlay");
 const deleteGameloopModal = document.getElementById("deleteGameloopModal");
 const deleteGameloopYesBtn = document.getElementById("deleteGameloopYesBtn");
@@ -361,8 +340,7 @@ function showDeleteGameloopConfirm() {
         deleteGameloopOverlay.classList.add("active");
         deleteGameloopModal.classList.add("active");
     } else {
-        // Fallback
-        if (confirm("Are You Sure To Delete Gameloop Completely")) {
+        if (confirm("Are You Sure To Delete Gameloop Completely?")) {
             if (window.chrome && window.chrome.webview) {
                 window.chrome.webview.postMessage("delete-gameloop");
             }
@@ -377,12 +355,6 @@ function hideDeleteGameloopConfirm() {
     }
 }
 
-if (deleteGameloopBtn) {
-    deleteGameloopBtn.addEventListener("click", () => {
-        showDeleteGameloopConfirm();
-    });
-}
-
 if (deleteGameloopYesBtn) {
     deleteGameloopYesBtn.addEventListener("click", () => {
         hideDeleteGameloopConfirm();
@@ -393,21 +365,15 @@ if (deleteGameloopYesBtn) {
 }
 
 if (deleteGameloopNoBtn) {
-    deleteGameloopNoBtn.addEventListener("click", () => {
-        hideDeleteGameloopConfirm();
-    });
+    deleteGameloopNoBtn.addEventListener("click", hideDeleteGameloopConfirm);
 }
 
 if (deleteGameloopCloseBtn) {
-    deleteGameloopCloseBtn.addEventListener("click", () => {
-        hideDeleteGameloopConfirm();
-    });
+    deleteGameloopCloseBtn.addEventListener("click", hideDeleteGameloopConfirm);
 }
 
 if (deleteGameloopOverlay) {
-    deleteGameloopOverlay.addEventListener("click", () => {
-        hideDeleteGameloopConfirm();
-    });
+    deleteGameloopOverlay.addEventListener("click", hideDeleteGameloopConfirm);
 }
 
 document.addEventListener("keydown", (e) => {
@@ -416,241 +382,61 @@ document.addEventListener("keydown", (e) => {
     }
 });
 
-// Delete NX Folder
-document.querySelector('[data-action="delete-nx-folder"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("delete-nx-folder");
-    }
-});
+// ==========================================
+// Universal Unified Click Dispatcher (All Tabs & Duplicate Buttons)
+// ==========================================
+document.addEventListener("click", (e) => {
+    // 1. Data-action buttons (Dashboard, Clean, GameLoop, Tweaks, Settings)
+    const actionEl = e.target.closest("[data-action]");
+    if (actionEl) {
+        const action = actionEl.getAttribute("data-action");
+        if (!action) return;
 
-// Clean GPU
-const cleanGpuBtn = document.querySelector('[data-action="clean-gpu"]');
-if (cleanGpuBtn) {
-    cleanGpuBtn.addEventListener("click", () => {
+        // Visual click feedback
+        actionEl.classList.add("btn-clicked");
+        setTimeout(() => actionEl.classList.remove("btn-clicked"), 250);
+
+        // Delete GameLoop Confirmation
+        if (action === "delete-gameloop") {
+            showDeleteGameloopConfirm();
+            return;
+        }
+
+        // Action-specific UI preparation (Boost & Fix Modals)
+        if (action === "gameloop-boost" || action === "boost") {
+            if (window.updateBoostModal) {
+                window.updateBoostModal(0, "Initializing GameLoop Boost...", "Connecting to ADB engine & preparing parameters...", "Step 0/9", "loading", "GAMELOOP ULTRA BOOST", "fas fa-rocket");
+            }
+        } else if (action === "fix-opengl" || action === "fix-open-gl") {
+            if (window.updateBoostModal) {
+                window.updateBoostModal(0, "Initializing Local OpenGL Fix...", "Detecting GameLoop paths & creating backups...", "Step 0/9", "loading", "GAMELOOP FIX OPEN GL", "fas fa-cube");
+            }
+        } else if (action === "fix-vt" || action === "fix-vt-restore" || action === "restore-gameloop") {
+            if (window.updateBoostModal) {
+                window.updateBoostModal(0, "Initializing Fix VT / Restore...", "Stopping processes & preparing to restore defaults...", "Step 0/6", "loading", "GAMELOOP FIX VT", "fas fa-undo-alt");
+            }
+        }
+        
+        // Post message to C++ WebView2 host (C++ dispatches native loading & completed notifications)
         if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage("clean-gpu");
+            window.chrome.webview.postMessage(action);
         }
-    });
-}
+        return;
+    }
 
-// Gameloop Boost
-const boostBtn = document.querySelector('[data-action="gameloop-boost"]');
-if (boostBtn) {
-    boostBtn.addEventListener("click", () => {
-        if (window.updateBoostModal) {
-            window.updateBoostModal(0, "Initializing GameLoop Boost...", "Connecting to ADB engine & preparing parameters...", "Step 0/9", "loading", "GAMELOOP ULTRA BOOST", "fas fa-rocket");
-        }
+    // 2. Data-mod buttons (GameLoop graphic / FPS active.sav mods)
+    const modEl = e.target.closest("[data-mod]");
+    if (modEl) {
+        const mod = modEl.getAttribute("data-mod");
+        if (!mod) return;
+
+        modEl.classList.add("btn-clicked");
+        setTimeout(() => modEl.classList.remove("btn-clicked"), 250);
+
         if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage("gameloop-boost");
+            window.chrome.webview.postMessage(mod);
         }
-    });
-}
-
-// Fix Open GL
-const fixOpenGlBtn = document.querySelector('[data-action="fix-opengl"]');
-if (fixOpenGlBtn) {
-    fixOpenGlBtn.addEventListener("click", () => {
-        if (window.updateBoostModal) {
-            window.updateBoostModal(0, "Initializing Local OpenGL Fix...", "Detecting GameLoop paths & creating backups...", "Step 0/9", "loading", "GAMELOOP FIX OPEN GL", "fas fa-cube");
-        }
-        if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage("fix-opengl");
-        }
-    });
-}
-
-// Fix VT (Restore GameLoop)
-const fixVtBtn = document.querySelector('[data-action="fix-vt"]');
-if (fixVtBtn) {
-    fixVtBtn.addEventListener("click", () => {
-        if (window.updateBoostModal) {
-            window.updateBoostModal(0, "Initializing Fix VT / Restore...", "Stopping processes & preparing to restore defaults...", "Step 0/6", "loading", "GAMELOOP FIX VT", "fas fa-undo-alt");
-        }
-        if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage("fix-vt");
-        }
-    });
-}
-
-// Kill Emulator
-document.querySelector('[data-action="kill-emulator"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("kill-emulator");
-    }
-});
-
-
-// start-game
-document.querySelector('[data-action="start-game"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("start-game");
-    }
-});
-
-// start-gameloop
-document.querySelector('[data-action="start-gameloop"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("start-gameloop");
-    }
-});
-
-// Smooth mods
-document.querySelector('[data-mod="super-smooth-120"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("super-smooth-120");
-    }
-});
-
-document.querySelector('[data-mod="smooth-120"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("smooth-120");
-    }
-});
-
-document.querySelector('[data-mod="balanced-120"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("balanced-120");
-    }
-});
-
-
-// HDR mods
-document.querySelector('[data-mod="hdr-60"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("hdr-60");
-    }
-});
-
-document.querySelector('[data-mod="hdr-90"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("hdr-90");
-    }
-});
-
-document.querySelector('[data-mod="hdr-120"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("hdr-120");
-    }
-});
-
-// Ultra HDR mods
-document.querySelector('[data-mod="ultra-hdr-60"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("ultra-hdr-60");
-    }
-});
-
-document.querySelector('[data-mod="ultra-hdr-90"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("ultra-hdr-90");
-    }
-});
-
-document.querySelector('[data-mod="ultra-hdr-120"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("ultra-hdr-120");
-    }
-});
-
-
-// nx-script
-document.querySelector('[data-action="nx-script"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("nx-script");
-    }
-});
-
-// optimize
-document.querySelector('[data-action="optimize"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("optimize");
-    }
-});
-
-// debloate
-document.querySelector('[data-action="debloate"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("debloate");
-    }
-});
-
-// download-programs
-document.querySelector('[data-action="download-programs"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("download-programs");
-    }
-});
-
-// download-gameloop-opt
-document.querySelector('[data-action="download-gameloop-opt"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("download-gameloop-opt");
-    }
-});
-
-// download-nx-json
-document.querySelector('[data-action="download-nx-json"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("download-nx-json");
-    }
-});
-
-// 120-fps-tool
-const btn120Fps = document.querySelector('[data-action="120-fps-tool"]');
-if (btn120Fps) {
-    btn120Fps.addEventListener("click", () => {
-        if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage("120-fps-tool");
-        }
-    });
-}
-
-// dp-clat
-document.querySelector('[data-action="dp-clat"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("dp-clat");
-    }
-});
-
-// msi-util
-document.querySelector('[data-action="msi-util"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("msi-util");
-    }
-});
-
-// control-panel
-document.querySelector('[data-action="control-panel"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("control-panel");
-    }
-});
-
-// visual-effects
-document.querySelector('[data-action="visual-effects"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("visual-effects");
-    }
-});
-
-// msconfig
-document.querySelector('[data-action="msconfig"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("msconfig");
-    }
-});
-
-// windows-update-blocker
-document.querySelector('[data-action="windows-update-blocker"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("windows-update-blocker");
-    }
-});
-
-// defender-control
-document.querySelector('[data-action="defender-control"]').addEventListener("click", () => {
-    if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage("defender-control");
+        return;
     }
 });
 
@@ -673,20 +459,6 @@ document.getElementById('infoOverlay').addEventListener('click', () => {
     document.getElementById('infoOverlay').classList.remove('active');
 });
 
-
-
-window.updateDashboard = (data) => {
-  if (window.dashboard && window.dashboard.performanceData) {
-    // Update all metrics with real data from C#
-    Object.keys(data).forEach((metric) => {
-      if (window.dashboard.performanceData[metric]) {
-        Object.assign(window.dashboard.performanceData[metric], data[metric]);
-      }
-    });
-    window.dashboard.updateUI();
-  }
-};
-
 window.updateAdbStatus = (connected, statusText) => {
   const badge = document.getElementById('adbStatusBadge');
   const textEl = document.getElementById('adbStatusText');
@@ -705,4 +477,71 @@ window.updateAdbStatus = (connected, statusText) => {
     }
   }
 };
+
+// Native Window Controls & Dragging Bridge
+function setupWindowControls() {
+  const minBtn = document.getElementById("winMinimize");
+  const maxBtn = document.getElementById("winMaximize");
+  const closeBtn = document.getElementById("winClose");
+  const dragRegion = document.getElementById("titlebarDrag");
+  const titlebar = document.getElementById("customTitlebar");
+
+  if (minBtn) {
+    minBtn.addEventListener("click", () => {
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage("window-minimize");
+      }
+    });
+  }
+
+  if (maxBtn) {
+    maxBtn.addEventListener("click", () => {
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage("window-maximize");
+      }
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage("window-close");
+      }
+    });
+  }
+
+  if (dragRegion) {
+    dragRegion.addEventListener("mousedown", (e) => {
+      if (e.button === 0) {
+        if (window.chrome && window.chrome.webview) {
+          window.chrome.webview.postMessage("window-drag");
+        }
+      }
+    });
+  }
+
+  if (titlebar) {
+    titlebar.addEventListener("mousedown", (e) => {
+      if (e.button === 0 && !e.target.closest(".win-control-btn")) {
+        if (window.chrome && window.chrome.webview) {
+          window.chrome.webview.postMessage("window-drag");
+        }
+      }
+    });
+
+    titlebar.addEventListener("dblclick", (e) => {
+      if (!e.target.closest(".win-control-btn")) {
+        if (window.chrome && window.chrome.webview) {
+          window.chrome.webview.postMessage("window-maximize");
+        }
+      }
+    });
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", setupWindowControls);
+} else {
+  setupWindowControls();
+}
 
