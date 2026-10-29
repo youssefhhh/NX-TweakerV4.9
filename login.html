@@ -149,76 +149,7 @@
         </div>
     </div>
 
-    <!-- Permanent Unclosable Discord Migration Modal -->
-    <div class="perm-modal-overlay" id="permDiscordModal" role="dialog" aria-modal="true" aria-labelledby="permModalTitle">
-        <div class="perm-modal-card">
-            <div class="perm-modal-glow"></div>
-            
-            <!-- Top Alert Badge -->
-            <div class="perm-badge">
-                <span class="perm-badge-dot"></span>
-                <i class="fas fa-triangle-exclamation"></i>
-                <span>تنبيه هـام وعاجل • IMPORTANT NOTICE</span>
-            </div>
 
-            <!-- Discord Icon with glowing rings -->
-            <div class="perm-icon-wrapper">
-                <div class="perm-icon-ring ring-1"></div>
-                <div class="perm-icon-ring ring-2"></div>
-                <div class="perm-icon-box">
-                    <i class="fab fa-discord"></i>
-                </div>
-            </div>
-
-            <!-- Main Heading -->
-            <h2 class="perm-title" id="permModalTitle">انتقال سيرفر الديسكورد الرسمي</h2>
-
-            <!-- Main Notice Text -->
-            <div class="perm-body-text">
-                <p class="perm-highlight">
-                    تم <strong>إغلاق سيرفرنا القديم</strong> على ديسكورد وقمنا بفتح <strong>سيرفر جديد رسمي</strong>.
-                </p>
-                <p class="perm-sub">
-                    برجاء الدخول فوراً إلى السيرفر الجديد لمتابعة آخر الأخبار والتحديثات.
-                </p>
-            </div>
-
-            <!-- Lock / Maintenance Alert Box -->
-            <div class="perm-lock-banner">
-                <div class="perm-lock-icon">
-                    <i class="fas fa-lock"></i>
-                </div>
-                <div class="perm-lock-info">
-                    <div class="perm-lock-title">البرنامج مقفول مؤقتاً</div>
-                    <div class="perm-lock-desc">ادخل الآن لتحصل على النسخة والتحديث الجديد!</div>
-                </div>
-            </div>
-
-            <!-- Primary Action Button -->
-            <a href="https://discord.gg/nxtools" target="_blank" class="perm-discord-btn" id="permDiscordJoinBtn">
-                <i class="fab fa-discord"></i>
-                <span>الانضمام إلى سيرفر الديسكورد الجديد</span>
-                <i class="fas fa-arrow-left perm-arrow-icon"></i>
-            </a>
-
-            <!-- Copy Link Box -->
-            <div class="perm-copy-row">
-                <div class="perm-link-badge">
-                    <i class="fas fa-link"></i>
-                    <span id="permLinkText">https://discord.gg/nxtools</span>
-                </div>
-                <button type="button" class="perm-copy-btn" id="permCopyBtn" title="نسخ الرابط">
-                    <i class="fas fa-copy" id="permCopyIcon"></i>
-                    <span id="permCopyLabel">نسخ</span>
-                </button>
-            </div>
-
-            <div class="perm-footer-note">
-                <i class="fas fa-shield-halved"></i>
-                <span>فريق إدارة NX Tweaker • جميع الحقوق محفوظة</span>
-            </div>
-        </div>
-    </div>
 
     <script>
         const licenseInput = document.getElementById('license');
@@ -431,65 +362,7 @@
             });
         }
 
-        // Discord Migration Modal Copy & Lock logic
-        const permCopyBtn = document.getElementById('permCopyBtn');
-        if (permCopyBtn) {
-            permCopyBtn.addEventListener('click', () => {
-                const url = 'https://discord.gg/nxtools';
-                const successFeedback = () => {
-                    permCopyBtn.classList.add('copied');
-                    const copyIcon = document.getElementById('permCopyIcon');
-                    const copyLabel = document.getElementById('permCopyLabel');
-                    if (copyIcon) copyIcon.className = 'fas fa-check';
-                    if (copyLabel) copyLabel.textContent = 'تم النسخ!';
-                    setTimeout(() => {
-                        permCopyBtn.classList.remove('copied');
-                        if (copyIcon) copyIcon.className = 'fas fa-copy';
-                        if (copyLabel) copyLabel.textContent = 'نسخ';
-                    }, 2500);
-                };
 
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(url).then(successFeedback).catch(() => {
-                        fallbackCopy(url, successFeedback);
-                    });
-                } else {
-                    fallbackCopy(url, successFeedback);
-                }
-            });
-        }
-
-        function fallbackCopy(text, cb) {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.focus();
-            ta.select();
-            try {
-                document.execCommand('copy');
-                cb();
-            } catch (err) {}
-            document.body.removeChild(ta);
-        }
-
-        // Lock down background login inputs
-        if (licenseInput) {
-            licenseInput.disabled = true;
-            licenseInput.placeholder = "البرنامج مقفول مؤقتاً - انضم للديسكورد";
-        }
-        if (accessButton) {
-            accessButton.disabled = true;
-        }
-
-        // Prevent Esc key from closing
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        }, true);
     </script>
 </body>
 
